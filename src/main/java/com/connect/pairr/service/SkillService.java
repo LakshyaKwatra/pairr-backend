@@ -1,7 +1,7 @@
 package com.connect.pairr.service;
 
+import com.connect.pairr.mapper.SkillMapper;
 import com.connect.pairr.model.dto.SkillResponse;
-import com.connect.pairr.model.entity.Skill;
 import com.connect.pairr.repository.SkillRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,16 +16,7 @@ public class SkillService {
 
     public List<SkillResponse> getAllSkills() {
         return skillRepository.findAll().stream()
-                .map(SkillService::toSkillResponse)
+                .map(SkillMapper::toResponse)
                 .toList();
-    }
-
-    private static SkillResponse toSkillResponse(Skill skill) {
-        return new SkillResponse(
-                skill.getId(),
-                skill.getName(),
-                skill.getCategory().getId(),
-                skill.getCategory().getName()
-        );
     }
 }

@@ -1,8 +1,8 @@
 package com.connect.pairr.controller;
 
+import com.connect.pairr.mapper.UserSkillMapper;
 import com.connect.pairr.model.dto.AddUserSkillRequest;
 import com.connect.pairr.model.dto.UserSkillResponse;
-import com.connect.pairr.model.entity.UserSkill;
 import com.connect.pairr.service.UserSkillService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/user/skills")
@@ -31,15 +30,9 @@ public class UserSkillController {
     @GetMapping
     public ResponseEntity<List<UserSkillResponse>> getUserSkills(@AuthenticationPrincipal UUID userId) {
 
-        List<UserSkill> userSkills = userSkillService.getUserSkills(userId);
-
-        List<UserSkillResponse> response = userSkills.stream()
-                .map(us -> UserSkillResponse.builder()
-                        .skill(us.getSkill())
-                        .rating(us.getRating())
-                        .proficiencyLevel(us.getProficiency())
-                        .build()
-                ).collect(Collectors.toList());
+        List<UserSkillResponse> response = userSkillService.getUserSkills(userId).stream()
+                .map(UserSkillMapper::toResponse)
+                .toList();
 
         return ResponseEntity.ok(response);
     }

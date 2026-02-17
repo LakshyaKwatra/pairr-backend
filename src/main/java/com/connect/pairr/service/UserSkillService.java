@@ -1,5 +1,6 @@
 package com.connect.pairr.service;
 
+import com.connect.pairr.mapper.UserSkillMapper;
 import com.connect.pairr.model.dto.AddUserSkillRequest;
 import com.connect.pairr.model.entity.Skill;
 import com.connect.pairr.model.entity.User;
@@ -67,12 +68,7 @@ public class UserSkillService {
                 throw new SkillNotFoundException(request.skillId());
             }
 
-            UserSkill userSkill = new UserSkill();
-            userSkill.setUser(user);
-            userSkill.setSkill(skill);
-            userSkill.setProficiency(request.proficiency());
-
-            toSave.add(userSkill);
+            toSave.add(UserSkillMapper.toEntity(user, skill, request.proficiency()));
         }
 
         // Bulk save

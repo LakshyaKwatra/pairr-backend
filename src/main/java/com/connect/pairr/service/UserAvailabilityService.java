@@ -1,5 +1,6 @@
 package com.connect.pairr.service;
 
+import com.connect.pairr.mapper.UserAvailabilityMapper;
 import com.connect.pairr.model.dto.AddUserAvailabilityRequest;
 import com.connect.pairr.model.entity.User;
 import com.connect.pairr.model.entity.UserAvailability;
@@ -35,15 +36,9 @@ public class UserAvailabilityService {
 
         if (requests.isEmpty()) return List.of();
 
-        List<UserAvailability> newAvailabilities = new ArrayList<>();
-        for (AddUserAvailabilityRequest req : requests) {
-            UserAvailability ua = new UserAvailability();
-            ua.setUser(user);
-            ua.setDayType(req.dayType());
-            ua.setStartTime(req.startTime());
-            ua.setEndTime(req.endTime());
-            newAvailabilities.add(ua);
-        }
+        List<UserAvailability> newAvailabilities = requests.stream()
+                .map(req -> UserAvailabilityMapper.toEntity(req, user))
+                .toList();
 
         return userAvailabilityRepository.saveAll(newAvailabilities);
     }

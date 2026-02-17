@@ -1,9 +1,10 @@
 package com.connect.pairr.controller;
 
+import com.connect.pairr.mapper.UserAvailabilityMapper;
 import com.connect.pairr.model.dto.AddUserAvailabilityRequest;
 import com.connect.pairr.model.dto.UserAvailabilityResponse;
-import com.connect.pairr.model.entity.UserAvailability;
 import com.connect.pairr.service.UserAvailabilityService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,15 +24,9 @@ public class UserAvailabilityController {
     public ResponseEntity<List<UserAvailabilityResponse>> getUserAvailabilities(
             @AuthenticationPrincipal UUID userId
     ) {
-        List<UserAvailability> availabilities = userAvailabilityService.getUserAvailabilities(userId);
-
-        List<UserAvailabilityResponse> response = availabilities.stream()
-                .map(ua -> UserAvailabilityResponse.builder()
-                        .dayType(ua.getDayType())
-                        .startTime(ua.getStartTime())
-                        .endTime(ua.getEndTime())
-                        .build()
-                ).toList();
+        List<UserAvailabilityResponse> response = userAvailabilityService.getUserAvailabilities(userId).stream()
+                .map(UserAvailabilityMapper::toResponse)
+                .toList();
 
         return ResponseEntity.ok(response);
     }
@@ -39,17 +34,11 @@ public class UserAvailabilityController {
     @PostMapping
     public ResponseEntity<List<UserAvailabilityResponse>> addUserAvailabilities(
             @AuthenticationPrincipal UUID userId,
-            @RequestBody List<AddUserAvailabilityRequest> requests
+            @RequestBody @Valid List<AddUserAvailabilityRequest> requests
     ) {
-        List<UserAvailability> availabilities = userAvailabilityService.addAvailabilities(userId, requests);
-
-        List<UserAvailabilityResponse> response = availabilities.stream()
-                .map(ua -> UserAvailabilityResponse.builder()
-                        .dayType(ua.getDayType())
-                        .startTime(ua.getStartTime())
-                        .endTime(ua.getEndTime())
-                        .build()
-                ).toList();
+        List<UserAvailabilityResponse> response = userAvailabilityService.addAvailabilities(userId, requests).stream()
+                .map(UserAvailabilityMapper::toResponse)
+                .toList();
 
         return ResponseEntity.ok(response);
     }

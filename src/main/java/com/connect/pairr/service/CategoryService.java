@@ -1,7 +1,7 @@
 package com.connect.pairr.service;
 
+import com.connect.pairr.mapper.CategoryMapper;
 import com.connect.pairr.model.dto.CategoryResponse;
-import com.connect.pairr.model.entity.Category;
 import com.connect.pairr.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,11 +16,7 @@ public class CategoryService {
 
     public List<CategoryResponse> getAllCategories() {
         return categoryRepository.findAll().stream()
-                .map(CategoryService::toCategoryResponse)
+                .map(CategoryMapper::toResponse)
                 .toList();
-    }
-
-    private static CategoryResponse toCategoryResponse(Category category) {
-        return new CategoryResponse(category.getId(), category.getName());
     }
 }
