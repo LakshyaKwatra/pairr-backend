@@ -62,10 +62,11 @@ public class ScoreCalculator {
 
     // Final score combining all factors
     public double computeFinalScore(double timeScore, double proficiencyScore, double skillScore, double userRatingScore) {
-        return (timeScore * TIME_WEIGHT) +
+        double raw = (timeScore * TIME_WEIGHT) +
                 (proficiencyScore * PROFICIENCY_WEIGHT) +
                 (skillScore * SKILL_RATING_WEIGHT) +
                 (userRatingScore * USER_RATING_WEIGHT);
+        return Math.round(raw * 100.0) / 100.0;
     }
 
     // private helper
