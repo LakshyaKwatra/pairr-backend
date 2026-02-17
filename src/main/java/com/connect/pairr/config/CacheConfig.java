@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 public class CacheConfig {
 
-    @Value("${cache.user-existence.ttl-minutes:10}")
+    @Value("${cache.user-existence.ttl-minutes:60}")
     private int userExistenceTtlMinutes;
 
     @Value("${cache.user-existence.max-size:10000}")
