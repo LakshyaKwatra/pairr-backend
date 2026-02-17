@@ -19,7 +19,9 @@ public class GlobalExceptionHandler {
             UserNotFoundException.class,
             SkillNotFoundException.class,
             UserSkillAlreadyExistsException.class,
-            RequesterSkillMissingException.class
+            RequesterSkillMissingException.class,
+            SelfRatingException.class,
+            DuplicateRatingException.class
     })
     public ResponseEntity<?> handleCustomExceptions(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

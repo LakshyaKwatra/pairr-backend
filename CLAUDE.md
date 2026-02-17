@@ -8,8 +8,8 @@ Pairr is a Spring Boot REST API for discovering and collaborating with like-mind
 
 ## MVP Status
 
-**Built:** Auth, profile + skills, availability, recommendation engine, admin skill/category management
-**Not yet built:** Chat (1:1 real-time messaging via WebSockets with stored history), ratings/feedback system, timezone support, meeting link sharing
+**Built:** Auth, profile + skills, availability, recommendation engine, ratings/feedback system, admin skill/category management
+**Not yet built:** Chat (1:1 real-time messaging via WebSockets with stored history), timezone support, meeting link sharing
 **Excluded from MVP:** Group chats, video calls, skill verification, AI/ML recommendations, notifications, payments
 
 **Package:** `com.connect.pairr` | **Java 17** | **Spring Boot 3.5.10** | **PostgreSQL 16**
@@ -54,9 +54,9 @@ This is the core feature — a multi-factor weighted scoring system:
 
 ### Database & Migrations
 
-Schema is managed by **Liquibase** (8 changesets in `src/main/resources/db/changelog/changes/`). Hibernate is set to `ddl-auto: validate` — it never modifies the schema. All entity IDs are UUIDs.
+Schema is managed by **Liquibase** (9 changesets in `src/main/resources/db/changelog/changes/`). Hibernate is set to `ddl-auto: validate` — it never modifies the schema. All entity IDs are UUIDs.
 
-**Tables:** `users`, `categories`, `skills`, `user_skills` (unique on user_id+skill_id), `user_availability` (unique on user_id+day_type+start_time+end_time)
+**Tables:** `users`, `categories`, `skills`, `user_skills` (unique on user_id+skill_id), `user_availability` (unique on user_id+day_type+start_time+end_time), `ratings` (unique on from_user_id+to_user_id+skill_id)
 
 ### Code Patterns
 
@@ -64,8 +64,10 @@ Schema is managed by **Liquibase** (8 changesets in `src/main/resources/db/chang
 - **Entities** use Lombok `@Builder`, `@Data`, `@NoArgsConstructor`, `@AllArgsConstructor` (`model/entity/`)
 - **Constructor injection** via `@RequiredArgsConstructor` everywhere
 - **Global exception handling** via `@ControllerAdvice` in `GlobalExceptionHandler`
-- **Interval merging** in `UserAvailabilityService` prevents overlapping availability windows
+- **Mappers** in `mapper/` package with static `toResponse()`/`toEntity()` methods — no inline mapping in controllers/services
+- **Availability is full-replace** — POST overwrites all existing availability for the user (not merge)
 - **Bulk operations** in `UserSkillService` and `UserAvailabilityService`
+- **Rating aggregation** — submitting a rating recalculates `UserSkill.rating` (per-skill avg) and `User.overallRating` (overall avg), which feed into recommendation scoring
 
 ### API Structure
 
@@ -78,4 +80,4 @@ Schema is managed by **Liquibase** (8 changesets in `src/main/resources/db/chang
 | `/api/user/skills` | `UserSkillController` | Authenticated |
 | `/api/user/availability` | `UserAvailabilityController` | Authenticated |
 | `/api/recommendations` | `RecommendationController` | Authenticated |
-| `/api/test/` | `TestDataController` | Authenticated (dev/test only) |
+| `/api/ratings` | `RatingController` | Authenticated |

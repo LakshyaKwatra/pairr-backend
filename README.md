@@ -9,7 +9,7 @@ A skill-based partner matching API. Discover and collaborate with like-minded pe
 1. **Register & set up profile** — sign up with email, declare skills with proficiency levels, set availability windows (weekday/weekend)
 2. **Discover partners** — search by skill, proficiency range, and availability overlap; system returns ranked recommendations
 3. **Communicate** — start a 1:1 chat or share an external meeting link *(planned)*
-4. **Rate & feedback** — rate users after interaction; ratings aggregate into overall and per-skill scores *(planned)*
+4. **Rate & feedback** — rate users on a skill (1–5 + optional text); ratings aggregate into per-skill and overall scores, feeding back into recommendation ranking
 
 ## Tech Stack
 
@@ -69,9 +69,12 @@ The app starts on `http://localhost:8080`. A default admin account is created on
 | GET | `/api/skills` | List all skills |
 | POST | `/api/user/skills` | Add skills to your profile (bulk) |
 | GET | `/api/user/skills` | Get your skills |
-| POST | `/api/user/availability` | Set availability windows (bulk, auto-merges overlaps) |
-| GET | `/api/user/availability?userId=` | Get a user's availability |
+| POST | `/api/user/availability` | Set availability windows (full replace) |
+| GET | `/api/user/availability` | Get your availability |
 | GET | `/api/recommendations?skillId=&dayType=&numberOfRecommendations=` | Get partner recommendations |
+| POST | `/api/ratings` | Rate a user on a skill (1–5 + optional feedback) |
+| GET | `/api/ratings?userId=` | Get all ratings for a user |
+| GET | `/api/ratings?userId=&skillId=` | Get ratings for a user on a specific skill |
 
 ### Admin (ADMIN role required)
 
@@ -90,10 +93,18 @@ The recommendation engine uses rule-based weighted scoring (no ML):
 |---|---|---|
 | Availability overlap | 50% | Sweep-line algorithm computes time overlap between windows |
 | Proficiency similarity | 25% | Closer proficiency levels score higher |
-| Skill rating | 15% | Peer-rated skill score similarity |
-| Overall user rating | 10% | Aggregate rating similarity |
+| Skill rating | 15% | Peer-rated skill score similarity (from ratings system) |
+| Overall user rating | 10% | Aggregate rating similarity (from ratings system) |
 
 Top-N results are selected using a min-heap for efficient O(n log k) ranking.
+
+### How Ratings Feed Into Recommendations
+
+When a user submits a rating, the system recalculates:
+- **Per-skill rating** (`UserSkill.rating`) — average of all ratings received for that user+skill
+- **Overall rating** (`User.overallRating`) — average of all ratings received across all skills
+
+These aggregated values are used by the recommendation engine's scoring formula above. Users with no ratings yet contribute 0 to the rating components.
 
 ## Configuration
 
@@ -112,12 +123,12 @@ Key environment variables (with defaults for local dev):
 - Profile with skills and proficiency levels (BEGINNER, AMATEUR, INTERMEDIATE, EXPERT)
 - Availability windows (weekday/weekend with time ranges)
 - Recommendation engine with weighted scoring
+- Ratings and feedback system (1–5 per skill, aggregated into per-skill and overall scores)
 - Admin-managed skill categories (prevents user-generated chaos)
 - Role-based access control (USER / ADMIN)
 
 ### Planned (not yet built)
 - 1:1 real-time chat via WebSockets with stored message history
-- Ratings and feedback system (per-interaction, aggregated per-skill and overall)
 - Timezone support
 - Meeting link sharing (Google Meet / Zoom — paste only, no generation)
 

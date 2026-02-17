@@ -38,6 +38,7 @@ public class ScoreCalculator {
 
     // Compute skill rating similarity (1 = same, 0 = max difference)
     public double skillRatingScore(BigDecimal requesterRating, BigDecimal candidateRating) {
+        if (requesterRating == null || candidateRating == null) return 0;
         return 1 - Math.abs(normalize(candidateRating) - normalize(requesterRating));
     }
 
