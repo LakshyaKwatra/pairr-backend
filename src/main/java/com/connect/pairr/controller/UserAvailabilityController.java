@@ -21,7 +21,7 @@ public class UserAvailabilityController {
 
     @GetMapping
     public ResponseEntity<List<UserAvailabilityResponse>> getUserAvailabilities(
-            @RequestParam UUID userId
+            @AuthenticationPrincipal UUID userId
     ) {
         List<UserAvailability> availabilities = userAvailabilityService.getUserAvailabilities(userId);
 
@@ -37,10 +37,20 @@ public class UserAvailabilityController {
     }
 
     @PostMapping
-    public void addUserAvailabilities(
+    public ResponseEntity<List<UserAvailabilityResponse>> addUserAvailabilities(
             @AuthenticationPrincipal UUID userId,
             @RequestBody List<AddUserAvailabilityRequest> requests
     ) {
-        userAvailabilityService.addAvailabilities(userId, requests);
+        List<UserAvailability> availabilities = userAvailabilityService.addAvailabilities(userId, requests);
+
+        List<UserAvailabilityResponse> response = availabilities.stream()
+                .map(ua -> UserAvailabilityResponse.builder()
+                        .dayType(ua.getDayType())
+                        .startTime(ua.getStartTime())
+                        .endTime(ua.getEndTime())
+                        .build()
+                ).toList();
+
+        return ResponseEntity.ok(response);
     }
 }

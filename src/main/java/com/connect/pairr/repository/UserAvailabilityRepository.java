@@ -20,5 +20,7 @@ public interface UserAvailabilityRepository extends JpaRepository<UserAvailabili
                                                   @Param("dayType") DayType dayType);
 
     List<UserAvailability> findAllByUserId(UUID userId);
+
+    void deleteAllByUserId(UUID userId);
 }
 
