@@ -79,6 +79,10 @@ Schema is managed by **Liquibase** (10 changesets in `src/main/resources/db/chan
 - **Rating aggregation** — submitting a rating recalculates `UserSkill.rating` (per-skill avg) and `User.overallRating` (overall avg), which feed into recommendation scoring
 - **`@EntityGraph`** used on repository queries to prevent N+1 (skills, user_skills, conversations, messages)
 
+### API Documentation
+
+Interactive API docs are available at `/swagger-ui.html` (springdoc-openapi). All REST endpoints are annotated with `@Tag`, `@Operation`, and `@Schema`. The Swagger UI includes a JWT "Authorize" button for testing authenticated endpoints. Config is in `OpenApiConfig.java`.
+
 ### API Structure
 
 | Prefix | Controller | Auth |

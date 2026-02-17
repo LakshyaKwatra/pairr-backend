@@ -41,3 +41,8 @@ admin:
   email: '${ADMIN_EMAIL:admin@pairr.com}'
   display-name: 'admin'
   password: '${ADMIN_PASSWORD:admin123}'
+
+springdoc:
+  swagger-ui:
+    tags-sorter: alpha
+    operations-sorter: method

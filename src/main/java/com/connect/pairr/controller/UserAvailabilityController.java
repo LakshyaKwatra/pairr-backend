@@ -4,6 +4,8 @@ import com.connect.pairr.mapper.UserAvailabilityMapper;
 import com.connect.pairr.model.dto.AddUserAvailabilityRequest;
 import com.connect.pairr.model.dto.UserAvailabilityResponse;
 import com.connect.pairr.service.UserAvailabilityService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,11 +18,13 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/user/availability")
 @RequiredArgsConstructor
+@Tag(name = "User Availability", description = "Manage your availability windows")
 public class UserAvailabilityController {
 
     private final UserAvailabilityService userAvailabilityService;
 
     @GetMapping
+    @Operation(summary = "Get your availability")
     public ResponseEntity<List<UserAvailabilityResponse>> getUserAvailabilities(
             @AuthenticationPrincipal UUID userId
     ) {
@@ -32,6 +36,7 @@ public class UserAvailabilityController {
     }
 
     @PostMapping
+    @Operation(summary = "Set availability windows", description = "Replaces all existing availability with the provided list. Send an empty list to clear.")
     public ResponseEntity<List<UserAvailabilityResponse>> addUserAvailabilities(
             @AuthenticationPrincipal UUID userId,
             @RequestBody @Valid List<AddUserAvailabilityRequest> requests

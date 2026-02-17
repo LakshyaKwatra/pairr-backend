@@ -45,6 +45,8 @@ The app starts on `http://localhost:8080`. A default admin account is created on
 - **Email:** `admin@pairr.com`
 - **Password:** `admin123`
 
+API docs are available at **[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)** — use the "Authorize" button to paste a JWT and test authenticated endpoints interactively.
+
 ### Build & Test
 
 ```bash
