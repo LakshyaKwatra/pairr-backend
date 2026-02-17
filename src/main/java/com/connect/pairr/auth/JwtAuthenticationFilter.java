@@ -1,7 +1,5 @@
 package com.connect.pairr.auth;
 
-import com.connect.pairr.model.entity.User;
-import com.connect.pairr.repository.UserRepository;
 import com.connect.pairr.service.UserService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -29,7 +27,6 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserRepository userRepository;
     private final UserService userService;
 
     @Override

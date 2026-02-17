@@ -4,6 +4,7 @@ import com.connect.pairr.mapper.UserSkillMapper;
 import com.connect.pairr.model.dto.AddUserSkillRequest;
 import com.connect.pairr.model.dto.UserSkillResponse;
 import com.connect.pairr.service.UserSkillService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,7 +23,7 @@ public class UserSkillController {
     @PostMapping
     public void addUserSkills(
             @AuthenticationPrincipal UUID userId,
-            @RequestBody List<AddUserSkillRequest> requests
+            @RequestBody @Valid List<AddUserSkillRequest> requests
     ) {
         userSkillService.addSkills(userId, requests);
     }

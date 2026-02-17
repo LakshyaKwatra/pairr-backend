@@ -5,6 +5,7 @@ import com.connect.pairr.model.entity.Skill;
 import com.connect.pairr.model.entity.User;
 import com.connect.pairr.model.entity.UserSkill;
 import com.connect.pairr.model.enums.DayType;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -41,6 +42,7 @@ public interface UserSkillRepository extends JpaRepository<UserSkill, UUID> {
 
     boolean existsByUserAndSkill(User user, Skill skill);
 
+    @EntityGraph(attributePaths = {"skill", "skill.category"})
     List<UserSkill> findAllByUserId(UUID userId);
 
     Optional<UserSkill> findByUserIdAndSkillId(UUID userId, UUID skillId);

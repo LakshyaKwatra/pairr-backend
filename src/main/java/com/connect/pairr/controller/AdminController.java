@@ -6,6 +6,7 @@ import com.connect.pairr.model.dto.CategoryResponse;
 import com.connect.pairr.model.dto.SkillResponse;
 import com.connect.pairr.model.dto.UserResponse;
 import com.connect.pairr.service.AdminService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,12 +26,12 @@ public class AdminController {
     }
 
     @PostMapping("/skills")
-    public ResponseEntity<SkillResponse> addSkill(@RequestBody AddSkillRequest request) {
+    public ResponseEntity<SkillResponse> addSkill(@RequestBody @Valid AddSkillRequest request) {
         return ResponseEntity.ok(adminService.addSkill(request));
     }
 
     @PostMapping("/categories")
-    public ResponseEntity<CategoryResponse> addCategory(@RequestBody AddCategoryRequest request) {
+    public ResponseEntity<CategoryResponse> addCategory(@RequestBody @Valid AddCategoryRequest request) {
         return ResponseEntity.ok(adminService.addCategory(request));
     }
 
