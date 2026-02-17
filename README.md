@@ -53,7 +53,24 @@ API docs are available at **[http://localhost:8080/swagger-ui.html](http://local
 ./mvnw clean package              # Build
 ./mvnw test                       # Run all tests
 ./mvnw test -Dtest=ClassName      # Run a single test class
+./mvnw test -Dtest=ClassName#methodName  # Run a single test method
 ```
+
+### Unit Tests
+
+The project includes unit tests for all critical service flows using Mockito (`@ExtendWith(MockitoExtension.class)`) — no Spring context or database needed, so they run fast (~0.5s total).
+
+| Test Class | Tests | What It Covers |
+|---|---|---|
+| `TimeMatcherTest` | 9 | Sweep-line overlap/distance algorithm: full, partial, no overlap, multiple slots, null/empty, unsorted input |
+| `ScoreCalculatorTest` | 18 | Proficiency/skill/user rating scoring, time score (overlap cap, inverse distance), final score weights and 2-decimal rounding |
+| `RatingServiceTest` | 10 | Submit rating with recalculation, all 6 validation guards (self-rating, not found, duplicate), query methods |
+| `ChatServiceTest` | 10 | Message sending, conversation creation/reuse, UUID ordering, self-message guard, participant authorization |
+| `AuthServiceTest` | 5 | Register (happy path + duplicate email), login (happy path + wrong email + wrong password) |
+| `UserSkillServiceTest` | 4 | Bulk skill add, user not found, duplicate skill, skill not in DB |
+| `RecommendationServiceTest` | 3 | Happy path, missing availability, missing skill preconditions |
+
+Test files live under `src/test/java/com/connect/pairr/` mirroring the main source structure (`core/recommendation/`, `service/`, `auth/`).
 
 ## API Overview
 
