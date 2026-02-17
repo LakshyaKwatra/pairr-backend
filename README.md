@@ -193,6 +193,22 @@ Setting availability is idempotent — `POST /api/user/availability` always repl
 
 This avoids complex merge logic and interval conflicts.
 
+## Testing Chat
+
+REST endpoints can be tested with Postman/curl. For WebSocket real-time chat, a built-in test page is available:
+
+1. Start the app (`./mvnw spring-boot:run`)
+2. Open **two browser tabs** to `http://localhost:8080/chat-test.html`
+3. In **Tab 1**: fill in email/password/display name and click **Register** (or **Login** if already registered)
+4. In **Tab 2**: register/login as a different user
+5. In both tabs: click **Connect** — status should turn green
+6. Copy the other user's ID from the debug log, paste it as **Recipient User ID**
+7. Type a message and hit **Send** — both tabs see the message in real time
+
+On connect, the page auto-fetches all conversation history via REST so you can see messages that were sent while you were offline. New real-time messages appear after the history separator.
+
+The page has zero external dependencies — it implements a minimal STOMP client inline.
+
 ## Configuration
 
 Key environment variables (with defaults for local dev):
