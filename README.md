@@ -8,8 +8,8 @@ A skill-based partner matching API. Discover and collaborate with like-minded pe
 
 1. **Register & set up profile** — sign up with email, declare skills with proficiency levels, set availability windows (weekday/weekend)
 2. **Discover partners** — search by skill, proficiency range, and availability overlap; system returns ranked recommendations
-3. **Communicate** — start a 1:1 chat or share an external meeting link *(planned)*
-4. **Rate & feedback** — rate users on a skill (1–5 + optional text); ratings aggregate into per-skill and overall scores, feeding back into recommendation ranking
+3. **Communicate** — start a 1:1 chat (REST or real-time WebSocket) with stored message history
+4. **Rate & feedback** — rate users on a skill (1-5 + optional text); ratings aggregate into per-skill and overall scores, feeding back into recommendation ranking
 
 ## Tech Stack
 
@@ -18,6 +18,7 @@ A skill-based partner matching API. Discover and collaborate with like-minded pe
 | Backend | Java 17, Spring Boot 3.5.10 |
 | Database | PostgreSQL 16 |
 | Auth | JWT (stateless, role-based) |
+| Real-time | WebSocket + STOMP |
 | Migrations | Liquibase |
 | Caching | Caffeine |
 | Build | Maven (wrapper included) |
@@ -72,9 +73,20 @@ The app starts on `http://localhost:8080`. A default admin account is created on
 | POST | `/api/user/availability` | Set availability windows (full replace) |
 | GET | `/api/user/availability` | Get your availability |
 | GET | `/api/recommendations?skillId=&dayType=&numberOfRecommendations=` | Get partner recommendations |
-| POST | `/api/ratings` | Rate a user on a skill (1–5 + optional feedback) |
+| POST | `/api/ratings` | Rate a user on a skill (1-5 + optional feedback) |
 | GET | `/api/ratings?userId=` | Get all ratings for a user |
 | GET | `/api/ratings?userId=&skillId=` | Get ratings for a user on a specific skill |
+| POST | `/api/chat/messages` | Send a chat message |
+| GET | `/api/chat/conversations` | List your conversations |
+| GET | `/api/chat/conversations/{id}/messages` | Get message history for a conversation |
+
+### WebSocket (STOMP over WebSocket)
+
+| Action | Destination | Description |
+|---|---|---|
+| Connect | `ws://localhost:8080/ws?token=<JWT>` | Open WebSocket connection with JWT auth |
+| Send | `/app/chat.send` | Send a message (payload: `{"recipientId":"...","content":"..."}`) |
+| Subscribe | `/user/queue/messages` | Receive incoming messages in real time |
 
 ### Admin (ADMIN role required)
 
@@ -85,7 +97,17 @@ The app starts on `http://localhost:8080`. A default admin account is created on
 | GET | `/api/admin/users` | List all users |
 | GET | `/api/admin/dashboard` | Admin dashboard |
 
-## How Recommendations Work
+## How It Works
+
+### Authentication Flow
+
+1. Client calls `POST /api/auth/register` (or `/login`) with email + password
+2. `AuthService` validates credentials, hashes the password (BCrypt for registration), and generates a JWT via `JwtService`
+3. The JWT contains the user's UUID (subject), email, and role; expires after 24 hours
+4. For all subsequent requests, the client sends `Authorization: Bearer <token>`
+5. `JwtAuthenticationFilter` intercepts each HTTP request, validates the JWT signature and expiry, checks the user still exists (cached via Caffeine, 60min TTL), and sets the `SecurityContext` with the user's UUID as principal
+
+### Recommendation Engine
 
 The recommendation engine uses rule-based weighted scoring (no ML):
 
@@ -96,15 +118,80 @@ The recommendation engine uses rule-based weighted scoring (no ML):
 | Skill rating | 15% | Peer-rated skill score similarity (from ratings system) |
 | Overall user rating | 10% | Aggregate rating similarity (from ratings system) |
 
-Top-N results are selected using a min-heap for efficient O(n log k) ranking.
+**How a recommendation request flows:**
 
-### How Ratings Feed Into Recommendations
+1. Client calls `GET /api/recommendations?skillId=X&dayType=WEEKDAY&numberOfRecommendations=10`
+2. `RecommendationService` validates the requester has the requested skill and has availability for the given day type
+3. A single JPQL query fetches all candidate users who share the skill and have matching day-type availability (excluding the requester)
+4. Candidates are grouped by user ID (since one user can have multiple time slots)
+5. `RecommendationEngine` scores each candidate using `ScoreCalculator`:
+   - **Time score:** `TimeMatcher` uses a sweep-line algorithm to find the best overlap (or closest distance) between the requester's and candidate's time windows. Overlap is capped at a configurable max (default 4 hours). If no overlap, an inverse-distance decay function still gives some credit for being close
+   - **Proficiency score:** `1.0 - (|requester_level - candidate_level| / max_diff)` where levels are BEGINNER(0), AMATEUR(1), INTERMEDIATE(2), EXPERT(3)
+   - **Skill rating score:** `1.0 - |normalize(candidate) - normalize(requester)|` where ratings are normalized to 0-1 scale (divided by 5). Returns 0 if either user has no ratings yet
+   - **User rating score:** Same formula as skill rating, applied to overall user ratings
+   - **Final score:** `time*0.50 + proficiency*0.25 + skillRating*0.15 + userRating*0.10`
+6. A min-heap (`PriorityQueue`) of size N efficiently selects the top-N candidates — O(n log k) where n = candidates, k = requested count
+7. Results are returned sorted by score descending
 
-When a user submits a rating, the system recalculates:
-- **Per-skill rating** (`UserSkill.rating`) — average of all ratings received for that user+skill
-- **Overall rating** (`User.overallRating`) — average of all ratings received across all skills
+### Ratings and Score Recalculation
 
-These aggregated values are used by the recommendation engine's scoring formula above. Users with no ratings yet contribute 0 to the rating components.
+1. Client calls `POST /api/ratings` with `{toUserId, skillId, rating (1-5), feedback (optional, max 500 chars)}`
+2. `RatingService` validates: not self-rating, both users have the skill, no duplicate rating for this (rater, rated, skill) triple
+3. The rating is saved to the `ratings` table
+4. **Eager recalculation:** the system immediately recomputes:
+   - `UserSkill.rating` = AVG of all ratings this user received for this specific skill
+   - `User.overallRating` = AVG of all ratings this user received across all skills
+5. These denormalized averages are what the recommendation engine reads — no on-the-fly aggregation needed at query time
+
+### Real-Time Chat (WebSocket + STOMP)
+
+Chat has two layers: REST endpoints for history/conversations and WebSocket for real-time message delivery.
+
+**WebSocket connection and authentication:**
+
+1. Client opens a WebSocket connection to `ws://localhost:8080/ws?token=<JWT>`
+2. The `/ws` endpoint is excluded from Spring Security's HTTP filter chain (permitted in `SecurityConfig`)
+3. `JwtHandshakeInterceptor` runs during the HTTP upgrade handshake:
+   - Extracts the `token` query parameter
+   - Validates the JWT via `JwtService` (signature + expiry)
+   - Checks the user still exists via `UserService`
+   - Stores `userId` and `role` in the WebSocket session attributes
+   - Returns `false` (rejects handshake) if any check fails
+4. After the WebSocket connection is established, the client sends a STOMP CONNECT frame
+5. `WebSocketAuthChannelInterceptor` intercepts the CONNECT frame, reads `userId`/`role` from session attributes, and sets a `UsernamePasswordAuthenticationToken` as the STOMP session's `Principal`
+
+**Sending a message in real time:**
+
+1. Client sends a STOMP SEND frame to `/app/chat.send` with payload `{"recipientId":"<UUID>","content":"Hello!"}`
+2. `WebSocketChatController.sendMessage()` handles it:
+   - Extracts `senderId` from the `Principal` (set during CONNECT)
+   - Delegates to `ChatService.sendMessage()` which persists the message to the database (same logic as the REST endpoint)
+3. The persisted `MessageResponse` is pushed to both users via `SimpMessagingTemplate.convertAndSendToUser()`:
+   - Recipient receives it at `/user/queue/messages`
+   - Sender also receives it at `/user/queue/messages` (so their UI updates)
+
+**Subscribing to receive messages:**
+
+- Clients subscribe to `/user/queue/messages` after connecting
+- Spring resolves `/user/{userId}/queue/messages` internally based on the `Principal`, so each user only receives their own messages
+
+**REST endpoints for history (Phase 1):**
+
+- `POST /api/chat/messages` — send a message (alternative to WebSocket, same persistence logic)
+- `GET /api/chat/conversations` — list all conversations for the current user, with last message preview (truncated to 100 chars)
+- `GET /api/chat/conversations/{id}/messages` — full message history for a conversation (verifies the user is a participant)
+
+**Conversation deduplication:** conversations are stored with sorted UUID pairs (`participant_1_id < participant_2_id`) so the same two users always map to one conversation row. `ChatService.findOrCreateConversation()` sorts the UUIDs before looking up or creating.
+
+### Availability (Full-Replace Pattern)
+
+Setting availability is idempotent — `POST /api/user/availability` always replaces the user's entire set of availability windows:
+
+1. All existing availability records for the user are deleted
+2. The new set from the request is saved
+3. Sending an empty list clears all availability
+
+This avoids complex merge logic and interval conflicts.
 
 ## Configuration
 
@@ -123,12 +210,12 @@ Key environment variables (with defaults for local dev):
 - Profile with skills and proficiency levels (BEGINNER, AMATEUR, INTERMEDIATE, EXPERT)
 - Availability windows (weekday/weekend with time ranges)
 - Recommendation engine with weighted scoring
-- Ratings and feedback system (1–5 per skill, aggregated into per-skill and overall scores)
+- Ratings and feedback system (1-5 per skill, aggregated into per-skill and overall scores)
+- 1:1 chat — REST endpoints for history + WebSocket (STOMP) for real-time delivery
 - Admin-managed skill categories (prevents user-generated chaos)
 - Role-based access control (USER / ADMIN)
 
 ### Planned (not yet built)
-- 1:1 real-time chat via WebSockets with stored message history
 - Timezone support
 - Meeting link sharing (Google Meet / Zoom — paste only, no generation)
 

@@ -8,8 +8,8 @@ Pairr is a Spring Boot REST API for discovering and collaborating with like-mind
 
 ## MVP Status
 
-**Built:** Auth, profile + skills, availability, recommendation engine, ratings/feedback system, admin skill/category management
-**Not yet built:** Chat (1:1 real-time messaging via WebSockets with stored history), timezone support, meeting link sharing
+**Built:** Auth, profile + skills, availability, recommendation engine, ratings/feedback system, 1:1 chat (REST + WebSocket), admin skill/category management
+**Not yet built:** Timezone support, meeting link sharing
 **Excluded from MVP:** Group chats, video calls, skill verification, AI/ML recommendations, notifications, payments
 
 **Package:** `com.connect.pairr` | **Java 17** | **Spring Boot 3.5.10** | **PostgreSQL 16**
@@ -41,7 +41,7 @@ A default admin account (`admin@pairr.com` / `admin123`) is auto-created on star
 
 Stateless JWT auth with role-based access control (USER, ADMIN). `JwtAuthenticationFilter` extracts Bearer tokens, validates them, caches user existence checks (Caffeine, 60min TTL), and sets the SecurityContext with UUID as principal and `ROLE_<role>` authority. Controllers access the current user via `@AuthenticationPrincipal UUID userId`. Tokens expire after 24h.
 
-**Route security** (`SecurityConfig`): `/api/auth/**` is public, `/api/admin/*` requires ADMIN role, everything else requires authentication.
+**Route security** (`SecurityConfig`): `/api/auth/**` and `/ws/**` are public, `/api/admin/**` requires ADMIN role, everything else requires authentication. WebSocket auth is handled separately by `JwtHandshakeInterceptor` (not the HTTP filter chain).
 
 ### Recommendation Engine (`core/recommendation/`)
 
@@ -52,11 +52,20 @@ This is the core feature — a multi-factor weighted scoring system:
 3. **ScoreCalculator** computes weighted scores: time overlap (50%) + proficiency similarity (25%) + skill rating similarity (15%) + user rating similarity (10%)
 4. **TimeMatcher** uses a sweep-line algorithm for overlap/distance calculation between availability windows — O(n log n + m log n)
 
+### Real-Time Chat (`auth/websocket/`, `controller/WebSocketChatController`)
+
+Two-layer architecture: REST endpoints for history + WebSocket (STOMP) for real-time delivery.
+
+- **WebSocket endpoint:** `/ws?token=<JWT>` — auth via `JwtHandshakeInterceptor` during HTTP upgrade
+- **STOMP channel auth:** `WebSocketAuthChannelInterceptor` sets the Principal on STOMP CONNECT from session attributes
+- **Message handler:** `WebSocketChatController` receives at `/app/chat.send`, persists via `ChatService`, pushes to both sender and recipient at `/user/queue/messages` via `SimpMessagingTemplate`
+- **Conversation deduplication:** sorted UUID pairs ensure one conversation row per user pair
+
 ### Database & Migrations
 
-Schema is managed by **Liquibase** (9 changesets in `src/main/resources/db/changelog/changes/`). Hibernate is set to `ddl-auto: validate` — it never modifies the schema. All entity IDs are UUIDs.
+Schema is managed by **Liquibase** (10 changesets in `src/main/resources/db/changelog/changes/`). Hibernate is set to `ddl-auto: validate` — it never modifies the schema. All entity IDs are UUIDs.
 
-**Tables:** `users`, `categories`, `skills`, `user_skills` (unique on user_id+skill_id), `user_availability` (unique on user_id+day_type+start_time+end_time), `ratings` (unique on from_user_id+to_user_id+skill_id)
+**Tables:** `users`, `categories`, `skills`, `user_skills` (unique on user_id+skill_id), `user_availability` (unique on user_id+day_type+start_time+end_time), `ratings` (unique on from_user_id+to_user_id+skill_id), `conversations` (unique on participant_1_id+participant_2_id), `messages`
 
 ### Code Patterns
 
@@ -68,6 +77,7 @@ Schema is managed by **Liquibase** (9 changesets in `src/main/resources/db/chang
 - **Availability is full-replace** — POST overwrites all existing availability for the user (not merge)
 - **Bulk operations** in `UserSkillService` and `UserAvailabilityService`
 - **Rating aggregation** — submitting a rating recalculates `UserSkill.rating` (per-skill avg) and `User.overallRating` (overall avg), which feed into recommendation scoring
+- **`@EntityGraph`** used on repository queries to prevent N+1 (skills, user_skills, conversations, messages)
 
 ### API Structure
 
@@ -81,3 +91,5 @@ Schema is managed by **Liquibase** (9 changesets in `src/main/resources/db/chang
 | `/api/user/availability` | `UserAvailabilityController` | Authenticated |
 | `/api/recommendations` | `RecommendationController` | Authenticated |
 | `/api/ratings` | `RatingController` | Authenticated |
+| `/api/chat/` | `ChatController` | Authenticated |
+| `/ws` | `WebSocketChatController` | JWT via handshake interceptor |
