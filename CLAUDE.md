@@ -34,6 +34,16 @@ A default admin account (`admin@pairr.com` / `admin123`) is auto-created on star
 | `JWT_SECRET` | hardcoded dev key | JWT HMAC-SHA signing key |
 | `ADMIN_EMAIL` | `admin@pairr.com` | Default admin email |
 | `ADMIN_PASSWORD` | `admin123` | Default admin password |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Allowed frontend origin(s) for CORS |
+| `PORT` | `8080` | Server port (auto-set by Railway in prod) |
+
+## Deployment
+
+**Production profile:** `application-prod.yml` activated via `SPRING_PROFILES_ACTIVE=prod` on Railway. Overrides DB connection (uses Railway's `PGHOST`/`PGPORT`/etc.), disables SQL logging, disables Swagger, exposes only `/actuator/health`.
+
+**CORS:** Configured in `SecurityConfig` via `cors.allowed-origins` property (env var `CORS_ALLOWED_ORIGINS`). Same origins are shared with WebSocket config in `WebSocketConfig`. Default is `http://localhost:5173` (Vite dev server).
+
+**CI/CD:** `.github/workflows/ci.yml` runs `./mvnw clean test` on push to `main` and PRs. Railway auto-deploys from GitHub.
 
 ## Architecture
 
@@ -41,7 +51,7 @@ A default admin account (`admin@pairr.com` / `admin123`) is auto-created on star
 
 Stateless JWT auth with role-based access control (USER, ADMIN). `JwtAuthenticationFilter` extracts Bearer tokens, validates them, caches user existence checks (Caffeine, 60min TTL), and sets the SecurityContext with UUID as principal and `ROLE_<role>` authority. Controllers access the current user via `@AuthenticationPrincipal UUID userId`. Tokens expire after 24h.
 
-**Route security** (`SecurityConfig`): `/api/auth/**` and `/ws/**` are public, `/api/admin/**` requires ADMIN role, everything else requires authentication. WebSocket auth is handled separately by `JwtHandshakeInterceptor` (not the HTTP filter chain).
+**Route security** (`SecurityConfig`): `/api/auth/**`, `/ws/**`, and `/actuator/health` are public, `/api/admin/**` requires ADMIN role, everything else requires authentication. CORS is configured via `CorsConfigurationSource` bean (origins from `cors.allowed-origins` property). WebSocket auth is handled separately by `JwtHandshakeInterceptor` (not the HTTP filter chain).
 
 ### Recommendation Engine (`core/recommendation/`)
 

@@ -3,6 +3,7 @@ package com.connect.pairr.config;
 import com.connect.pairr.auth.websocket.JwtHandshakeInterceptor;
 import com.connect.pairr.auth.websocket.WebSocketAuthChannelInterceptor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -18,6 +19,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final JwtHandshakeInterceptor jwtHandshakeInterceptor;
     private final WebSocketAuthChannelInterceptor webSocketAuthChannelInterceptor;
 
+    @Value("${cors.allowed-origins:http://localhost:5173}")
+    private String[] allowedOrigins;
+
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         registry.enableSimpleBroker("/queue");
@@ -29,7 +33,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .addInterceptors(jwtHandshakeInterceptor)
-                .setAllowedOriginPatterns("*");
+                .setAllowedOrigins(allowedOrigins);
     }
 
     @Override

@@ -237,6 +237,37 @@ Key environment variables (with defaults for local dev):
 | `JWT_SECRET` | Dev key (change in prod) | JWT signing key |
 | `ADMIN_EMAIL` | `admin@pairr.com` | Default admin email |
 | `ADMIN_PASSWORD` | `admin123` | Default admin password |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Allowed frontend origin(s) for CORS |
+| `PORT` | `8080` | Server port (auto-set by Railway) |
+
+## Deployment
+
+The backend is deployed on **Railway** with a **PostgreSQL** database. The frontend (React) is deployed on **Vercel**.
+
+### Production Profile
+
+Railway activates the production profile via `SPRING_PROFILES_ACTIVE=prod`, which overrides:
+- DB connection → uses Railway's PostgreSQL env vars (`PGHOST`, `PGPORT`, etc.)
+- SQL logging → disabled
+- Swagger UI → disabled
+- Actuator → exposes only `/actuator/health`
+
+### Railway Environment Variables
+
+| Variable | Value | Notes |
+|---|---|---|
+| `SPRING_PROFILES_ACTIVE` | `prod` | Activates production config |
+| `JWT_SECRET` | Random 32+ byte string | **Required** — no insecure default in prod |
+| `ADMIN_EMAIL` | Your admin email | **Required** |
+| `ADMIN_PASSWORD` | Strong password | **Required** |
+| `CORS_ALLOWED_ORIGINS` | `https://pairr.vercel.app` | Your Vercel frontend URL |
+| `NIXPACKS_JDK_VERSION` | `17` | Ensures correct Java version |
+| `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` | Auto-provided | From Railway PostgreSQL service |
+| `PORT` | Auto-provided | Railway assigns the port |
+
+### CI/CD
+
+GitHub Actions runs `./mvnw clean test` on every push to `main` and on pull requests. Deployment is handled automatically by Railway on git push (connect your GitHub repo in Railway's dashboard).
 
 ## MVP Scope
 
