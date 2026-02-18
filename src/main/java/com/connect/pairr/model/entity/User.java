@@ -22,14 +22,20 @@ public class User {
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(name = "email", nullable = false, unique = true)
+    @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(name = "display_name", nullable = false)
+    @Column(name = "username", nullable = false, unique = true, length = 20)
+    private String username;
+
+    @Column(name = "display_name", nullable = false, length = 50)
     private String displayName;
 
-    @Column(name = "password", nullable = false)
+    @Column(name = "password")
     private String password;
+
+    @Column(name = "google_id", unique = true)
+    private String googleId;
 
     @Column(name = "overall_rating", precision = 2, scale = 1)
     private BigDecimal overallRating;

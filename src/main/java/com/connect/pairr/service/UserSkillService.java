@@ -7,12 +7,12 @@ import com.connect.pairr.model.entity.User;
 import com.connect.pairr.model.entity.UserSkill;
 import com.connect.pairr.exception.SkillNotFoundException;
 import com.connect.pairr.exception.UserNotFoundException;
-import com.connect.pairr.exception.UserSkillAlreadyExistsException;
 import com.connect.pairr.repository.SkillRepository;
 import com.connect.pairr.repository.UserRepository;
 import com.connect.pairr.repository.UserSkillRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -29,19 +29,17 @@ public class UserSkillService {
         return userSkillRepository.findAllByUserId(userId);
     }
 
+    @Transactional
     public void addSkills(UUID userId, List<AddUserSkillRequest> requests) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
-        // Fetch all existing user skills in ONE query
-        List<UserSkill> existingUserSkills = userSkillRepository.findAllByUserId(userId);
+        // Delete all existing skills and replace with the new set
+        userSkillRepository.deleteAllByUserId(userId);
+        userSkillRepository.flush();
 
-
-        // Extract existing skill IDs into a Set
-        Set<UUID> existingSkillIds = existingUserSkills.stream()
-                .map(us -> us.getSkill().getId())
-                .collect(Collectors.toSet());
+        if (requests.isEmpty()) return;
 
         // Fetch all requested skills in ONE query
         List<UUID> requestedSkillIds = requests.stream()
@@ -53,15 +51,10 @@ public class UserSkillService {
         Map<UUID, Skill> skillMap = skills.stream()
                 .collect(Collectors.toMap(Skill::getId, s -> s));
 
-        // Filter in memory + build new entities
+        // Build new entities
         List<UserSkill> toSave = new ArrayList<>();
 
         for (AddUserSkillRequest request : requests) {
-
-            if (existingSkillIds.contains(request.skillId())) {
-                throw new UserSkillAlreadyExistsException(request.skillId());
-            }
-
             Skill skill = skillMap.get(request.skillId());
 
             if (skill == null) {

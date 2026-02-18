@@ -20,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
 
 import java.time.Instant;
 import java.util.List;
@@ -172,42 +173,56 @@ class ChatServiceTest {
     }
 
     @Test
-    void getConversations_returnsConversationsWithPreview() {
+    void getConversations_returnsConversationsWithPreviewAndUnreadCount() {
         Conversation conv = Conversation.builder()
                 .id(UUID.randomUUID()).participant1(sender).participant2(recipient)
                 .lastMessageAt(Instant.now()).createdAt(Instant.now()).build();
 
         Message lastMsg = Message.builder()
-                .id(UUID.randomUUID()).conversation(conv).sender(sender)
+                .id(UUID.randomUUID()).conversation(conv).sender(recipient)
                 .content("Last message").createdAt(Instant.now()).build();
 
-        when(conversationRepository.findAllByParticipant(senderId)).thenReturn(List.of(conv));
+        when(conversationRepository.findAllByParticipant(eq(senderId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(conv)));
         when(messageRepository.findFirstByConversationIdOrderByCreatedAtDesc(conv.getId()))
                 .thenReturn(Optional.of(lastMsg));
+        when(messageRepository.countByConversationIdAndSenderIdNotAndIsReadFalse(conv.getId(), senderId))
+                .thenReturn(5L);
 
-        List<ConversationResponse> result = chatService.getConversations(senderId);
-        assertEquals(1, result.size());
-        assertEquals(recipientId, result.get(0).otherUserId());
-        assertEquals("Last message", result.get(0).lastMessage());
+        Page<ConversationResponse> result = chatService.getConversations(senderId, PageRequest.of(0, 10));
+        assertEquals(1, result.getContent().size());
+        assertEquals(recipientId, result.getContent().get(0).otherUserId());
+        assertEquals("Last message", result.getContent().get(0).lastMessage());
+        assertEquals(5L, result.getContent().get(0).unreadCount());
     }
 
     @Test
-    void getMessages_userIsParticipant_returnsMessages() {
+    void getMessages_userIsParticipant_marksAsReadAndReturnsMessages() {
         UUID convId = UUID.randomUUID();
         Conversation conv = Conversation.builder()
                 .id(convId).participant1(sender).participant2(recipient)
                 .createdAt(Instant.now()).build();
 
         Message msg = Message.builder()
-                .id(UUID.randomUUID()).conversation(conv).sender(sender)
+                .id(UUID.randomUUID()).conversation(conv).sender(recipient)
                 .content("Hello").createdAt(Instant.now()).build();
 
         when(conversationRepository.findById(convId)).thenReturn(Optional.of(conv));
-        when(messageRepository.findAllByConversationIdOrderByCreatedAtAsc(convId)).thenReturn(List.of(msg));
+        when(messageRepository.findAllByConversationId(eq(convId), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(msg)));
 
-        List<MessageResponse> result = chatService.getMessages(senderId, convId);
-        assertEquals(1, result.size());
-        assertEquals("Hello", result.get(0).content());
+        Page<MessageResponse> result = chatService.getMessages(senderId, convId, PageRequest.of(0, 50));
+        
+        verify(messageRepository).markAllAsRead(convId, senderId);
+        assertEquals(1, result.getContent().size());
+        assertEquals("Hello", result.getContent().get(0).content());
+    }
+
+    @Test
+    void markMessagesAsRead_callsRepository() {
+        UUID convId = UUID.randomUUID();
+        chatService.markMessagesAsRead(senderId, convId);
+        verify(messageRepository).markAllAsRead(convId, senderId);
     }
 
     @Test
@@ -215,7 +230,7 @@ class ChatServiceTest {
         UUID convId = UUID.randomUUID();
         when(conversationRepository.findById(convId)).thenReturn(Optional.empty());
         assertThrows(ConversationNotFoundException.class,
-                () -> chatService.getMessages(senderId, convId));
+                () -> chatService.getMessages(senderId, convId, PageRequest.of(0, 50)));
     }
 
     @Test
@@ -228,6 +243,6 @@ class ChatServiceTest {
 
         when(conversationRepository.findById(convId)).thenReturn(Optional.of(conv));
         assertThrows(ConversationNotFoundException.class,
-                () -> chatService.getMessages(outsiderId, convId));
+                () -> chatService.getMessages(outsiderId, convId, PageRequest.of(0, 50)));
     }
 }

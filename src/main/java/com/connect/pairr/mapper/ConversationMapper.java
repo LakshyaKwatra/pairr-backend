@@ -11,7 +11,7 @@ public class ConversationMapper {
 
     private static final int LAST_MESSAGE_PREVIEW_LENGTH = 100;
 
-    public static ConversationResponse toResponse(Conversation conversation, UUID currentUserId, Message lastMessage) {
+    public static ConversationResponse toResponse(Conversation conversation, UUID currentUserId, Message lastMessage, long unreadCount) {
         User otherUser = conversation.getParticipant1().getId().equals(currentUserId)
                 ? conversation.getParticipant2()
                 : conversation.getParticipant1();
@@ -30,6 +30,7 @@ public class ConversationMapper {
                 .otherUserDisplayName(otherUser.getDisplayName())
                 .lastMessage(preview)
                 .lastMessageAt(conversation.getLastMessageAt())
+                .unreadCount(unreadCount)
                 .build();
     }
 }

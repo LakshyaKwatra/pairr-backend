@@ -32,6 +32,10 @@ public class Message {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Column(name = "is_read", nullable = false)
+    @Builder.Default
+    private boolean isRead = false;
+
     @PrePersist
     void prePersist() {
         this.id = UUID.randomUUID();

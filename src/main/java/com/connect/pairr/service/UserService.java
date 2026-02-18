@@ -1,5 +1,7 @@
 package com.connect.pairr.service;
 
+import com.connect.pairr.exception.UserNotFoundException;
+import com.connect.pairr.model.entity.User;
 import com.connect.pairr.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -12,6 +14,11 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+
+    public User getUserById(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+    }
 
     /**
      * Checks if a user exists by ID.

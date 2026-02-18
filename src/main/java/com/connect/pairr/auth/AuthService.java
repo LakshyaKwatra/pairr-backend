@@ -24,9 +24,14 @@ public class AuthService {
             throw new RuntimeException("Email already exists");
         }
 
+        if (userRepository.existsByUsername(request.username())) {
+            throw new RuntimeException("Username already exists");
+        }
+
         User user = new User();
         user.setRole(Role.USER);
         user.setEmail(request.email());
+        user.setUsername(request.username());
         user.setDisplayName(request.displayName());
         user.setPassword(passwordEncoder.encode(request.password()));
 
@@ -39,8 +44,13 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
 
-        User user = userRepository.findByEmail(request.email())
+        // Search by email or username
+        User user = userRepository.findByEmailOrUsername(request.email(), request.email())
                 .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+
+        if (user.getPassword() == null) {
+            throw new RuntimeException("Please login with Google for this account");
+        }
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new RuntimeException("Invalid credentials");

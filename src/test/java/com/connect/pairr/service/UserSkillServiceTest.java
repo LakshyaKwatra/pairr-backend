@@ -2,7 +2,6 @@ package com.connect.pairr.service;
 
 import com.connect.pairr.exception.SkillNotFoundException;
 import com.connect.pairr.exception.UserNotFoundException;
-import com.connect.pairr.exception.UserSkillAlreadyExistsException;
 import com.connect.pairr.model.dto.AddUserSkillRequest;
 import com.connect.pairr.model.entity.*;
 import com.connect.pairr.model.enums.ProficiencyLevel;
@@ -57,7 +56,6 @@ class UserSkillServiceTest {
     @Test
     void addSkills_happyPath() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(userSkillRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
         when(skillRepository.findAllById(anyList())).thenReturn(List.of(skill1, skill2));
 
         List<AddUserSkillRequest> requests = List.of(
@@ -66,6 +64,7 @@ class UserSkillServiceTest {
 
         userSkillService.addSkills(userId, requests);
 
+        verify(userSkillRepository).deleteAllByUserId(userId);
         verify(userSkillRepository).saveAll(argThat(list -> {
             List<UserSkill> saved = (List<UserSkill>) list;
             return saved.size() == 2;
@@ -81,21 +80,22 @@ class UserSkillServiceTest {
     }
 
     @Test
-    void addSkills_duplicateSkill_throws() {
-        UserSkill existing = new UserSkill(UUID.randomUUID(), user, skill1, ProficiencyLevel.AMATEUR, null);
+    void addSkills_overwritesExisting() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(userSkillRepository.findAllByUserId(userId)).thenReturn(List.of(existing));
         when(skillRepository.findAllById(anyList())).thenReturn(List.of(skill1));
 
-        assertThrows(UserSkillAlreadyExistsException.class,
-                () -> userSkillService.addSkills(userId, List.of(
-                        new AddUserSkillRequest(skillId1, ProficiencyLevel.INTERMEDIATE))));
+        List<AddUserSkillRequest> requests = List.of(
+                new AddUserSkillRequest(skillId1, ProficiencyLevel.INTERMEDIATE));
+
+        userSkillService.addSkills(userId, requests);
+
+        verify(userSkillRepository).deleteAllByUserId(userId);
+        verify(userSkillRepository).saveAll(anyList());
     }
 
     @Test
     void addSkills_skillNotInDb_throws() {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(userSkillRepository.findAllByUserId(userId)).thenReturn(Collections.emptyList());
         when(skillRepository.findAllById(anyList())).thenReturn(Collections.emptyList()); // nothing found
 
         assertThrows(SkillNotFoundException.class,

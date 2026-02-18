@@ -18,7 +18,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             UserNotFoundException.class,
             SkillNotFoundException.class,
-            UserSkillAlreadyExistsException.class,
             RequesterSkillMissingException.class,
             SelfRatingException.class,
             DuplicateRatingException.class,

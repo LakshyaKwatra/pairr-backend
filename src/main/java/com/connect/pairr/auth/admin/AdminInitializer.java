@@ -37,6 +37,7 @@ public class AdminInitializer {
 
             User admin = User.builder()
                     .email(adminEmail)
+                    .username("admin")
                     .displayName(adminDisplayName)
                     .password(passwordEncoder.encode(adminPassword))
                     .role(Role.ADMIN)

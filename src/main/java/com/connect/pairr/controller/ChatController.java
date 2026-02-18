@@ -8,11 +8,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -33,19 +36,31 @@ public class ChatController {
     }
 
     @GetMapping("/conversations")
-    @Operation(summary = "List your conversations", description = "Returns all conversations with last message preview")
-    public ResponseEntity<List<ConversationResponse>> getConversations(
-            @AuthenticationPrincipal UUID userId
+    @Operation(summary = "List your conversations", description = "Returns paginated conversations with last message preview")
+    public ResponseEntity<Page<ConversationResponse>> getConversations(
+            @AuthenticationPrincipal UUID userId,
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable
     ) {
-        return ResponseEntity.ok(chatService.getConversations(userId));
+        return ResponseEntity.ok(chatService.getConversations(userId, pageable));
     }
 
-    @GetMapping("/conversations/{conversationId}/messages")
-    @Operation(summary = "Get message history", description = "Returns all messages in a conversation, ordered by time. You must be a participant.")
-    public ResponseEntity<List<MessageResponse>> getMessages(
+    @PostMapping("/conversations/{conversationId}/read")
+    @Operation(summary = "Mark conversation as read", description = "Marks all messages from the other participant as read.")
+    public ResponseEntity<Void> markAsRead(
             @AuthenticationPrincipal UUID userId,
             @PathVariable UUID conversationId
     ) {
-        return ResponseEntity.ok(chatService.getMessages(userId, conversationId));
+        chatService.markMessagesAsRead(userId, conversationId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/conversations/{conversationId}/messages")
+    @Operation(summary = "Get message history", description = "Returns paginated messages in a conversation, ordered by time. Automatically marks messages as read.")
+    public ResponseEntity<Page<MessageResponse>> getMessages(
+            @AuthenticationPrincipal UUID userId,
+            @PathVariable UUID conversationId,
+            @ParameterObject @PageableDefault(size = 50) Pageable pageable
+    ) {
+        return ResponseEntity.ok(chatService.getMessages(userId, conversationId, pageable));
     }
 }

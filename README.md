@@ -85,9 +85,13 @@ Test files live under `src/test/java/com/connect/pairr/` mirroring the main sour
 
 | Method | Endpoint | Description |
 |---|---|---|
+| GET | `/api/user/me` | Get current user profile (ID, email, etc.) |
+| GET | `/api/users/{id}` | Get a user's public profile |
+| GET | `/api/users/{id}/skills` | Get a user's skills |
+| GET | `/api/users/{id}/availability` | Get a user's availability |
 | GET | `/api/categories` | List all skill categories |
 | GET | `/api/skills` | List all skills |
-| POST | `/api/user/skills` | Add skills to your profile (bulk) |
+| POST | `/api/user/skills` | Add skills to your profile (full replace) |
 | GET | `/api/user/skills` | Get your skills |
 | POST | `/api/user/availability` | Set availability windows (full replace) |
 | GET | `/api/user/availability` | Get your availability |
@@ -96,8 +100,9 @@ Test files live under `src/test/java/com/connect/pairr/` mirroring the main sour
 | GET | `/api/ratings?userId=` | Get all ratings for a user |
 | GET | `/api/ratings?userId=&skillId=` | Get ratings for a user on a specific skill |
 | POST | `/api/chat/messages` | Send a chat message |
-| GET | `/api/chat/conversations` | List your conversations |
-| GET | `/api/chat/conversations/{id}/messages` | Get message history for a conversation |
+| GET | `/api/chat/conversations` | List your conversations (paginated, with unread count) |
+| GET | `/api/chat/conversations/{id}/messages` | Get message history (paginated, auto-marks as read) |
+| POST | `/api/chat/conversations/{id}/read` | Mark conversation as read |
 
 ### WebSocket (STOMP over WebSocket)
 
@@ -202,15 +207,15 @@ Chat has two layers: REST endpoints for history/conversations and WebSocket for 
 
 **Conversation deduplication:** conversations are stored with sorted UUID pairs (`participant_1_id < participant_2_id`) so the same two users always map to one conversation row. `ChatService.findOrCreateConversation()` sorts the UUIDs before looking up or creating.
 
-### Availability (Full-Replace Pattern)
+### Idempotent Profile Updates (Full-Replace Pattern)
 
-Setting availability is idempotent — `POST /api/user/availability` always replaces the user's entire set of availability windows:
+Setting skills and availability is idempotent — `POST /api/user/skills` and `POST /api/user/availability` always replace the user's entire set:
 
-1. All existing availability records for the user are deleted
+1. All existing records (skills or availability) for the user are deleted
 2. The new set from the request is saved
-3. Sending an empty list clears all availability
+3. Sending an empty list clears all entries
 
-This avoids complex merge logic and interval conflicts.
+This avoids complex merge logic and conflicts.
 
 ## Testing Chat
 

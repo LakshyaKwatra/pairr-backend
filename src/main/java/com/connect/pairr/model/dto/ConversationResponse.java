@@ -11,5 +11,6 @@ public record ConversationResponse(
         UUID otherUserId,
         String otherUserDisplayName,
         String lastMessage,
-        Instant lastMessageAt
+        Instant lastMessageAt,
+        long unreadCount
 ) {}
