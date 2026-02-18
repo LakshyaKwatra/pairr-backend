@@ -10,6 +10,7 @@ import java.util.UUID;
 @Table(
         name = "ratings",
         uniqueConstraints = @UniqueConstraint(
+                name = "uq_rating_from_to_skill",
                 columnNames = {"from_user_id", "to_user_id", "skill_id"}
         )
 )

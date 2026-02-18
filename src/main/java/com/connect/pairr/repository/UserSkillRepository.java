@@ -19,14 +19,16 @@ import java.util.UUID;
 public interface UserSkillRepository extends JpaRepository<UserSkill, UUID> {
 
     @Query("""
-        SELECT
-            u.id AS userId,
-            u.displayName AS displayName,
-            us.proficiency AS proficiency,
-            us.rating AS skillRating,
-            u.overallRating AS userRating,
-            ua.startTime AS availabilityStart,
-            ua.endTime AS availabilityEnd
+        SELECT new com.connect.pairr.model.dto.UserSkillAvailabilityData(
+            u.id,
+            u.displayName,
+            us.proficiency,
+            us.rating,
+            u.overallRating,
+            u.completedSessionsCount,
+            ua.startTime,
+            ua.endTime
+        )
         FROM User u
         JOIN UserSkill us ON us.user = u
         JOIN UserAvailability ua ON ua.user = u

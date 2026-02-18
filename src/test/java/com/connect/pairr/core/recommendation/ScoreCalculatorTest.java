@@ -146,37 +146,70 @@ class ScoreCalculatorTest {
         assertEquals(0.0, score);
     }
 
+    // --- sessionCountScore ---
+
+    @Test
+    void sessionCountScore_zero_returns0() {
+        assertEquals(0.0, scoreCalculator.sessionCountScore(0L));
+    }
+
+    @Test
+    void sessionCountScore_null_returns0() {
+        assertEquals(0.0, scoreCalculator.sessionCountScore(null));
+    }
+
+    @Test
+    void sessionCountScore_halfCap_returns05() {
+        assertEquals(0.5, scoreCalculator.sessionCountScore(10L));
+    }
+
+    @Test
+    void sessionCountScore_atCap_returns1() {
+        assertEquals(1.0, scoreCalculator.sessionCountScore(20L));
+    }
+
+    @Test
+    void sessionCountScore_exceedsCap_cappedAt1() {
+        assertEquals(1.0, scoreCalculator.sessionCountScore(50L));
+    }
+
+    // --- computeTimeScore ---
+    // ... existing tests ...
+
     // --- computeFinalScore ---
 
     @Test
     void computeFinalScore_allZeros_returns0() {
-        assertEquals(0.0, scoreCalculator.computeFinalScore(0, 0, 0, 0));
+        assertEquals(0.0, scoreCalculator.computeFinalScore(0, 0, 0, 0, 0));
     }
 
     @Test
     void computeFinalScore_allOnes_returns1() {
-        assertEquals(1.0, scoreCalculator.computeFinalScore(1, 1, 1, 1));
+        assertEquals(1.0, scoreCalculator.computeFinalScore(1, 1, 1, 1, 1));
     }
 
     @Test
     void computeFinalScore_verifyWeights() {
-        // time=1.0, prof=0.0, skill=0.0, user=0.0 → 0.5*1 = 0.5
-        assertEquals(0.5, scoreCalculator.computeFinalScore(1, 0, 0, 0));
+        // time=1.0, others=0.0 → 0.45*1 = 0.45
+        assertEquals(0.45, scoreCalculator.computeFinalScore(1, 0, 0, 0, 0));
 
-        // time=0.0, prof=1.0, skill=0.0, user=0.0 → 0.25*1 = 0.25
-        assertEquals(0.25, scoreCalculator.computeFinalScore(0, 1, 0, 0));
+        // prof=1.0, others=0.0 → 0.20*1 = 0.20
+        assertEquals(0.2, scoreCalculator.computeFinalScore(0, 1, 0, 0, 0));
 
-        // time=0.0, prof=0.0, skill=1.0, user=0.0 → 0.15*1 = 0.15
-        assertEquals(0.15, scoreCalculator.computeFinalScore(0, 0, 1, 0));
+        // skill=1.0, others=0.0 → 0.15*1 = 0.15
+        assertEquals(0.15, scoreCalculator.computeFinalScore(0, 0, 1, 0, 0));
 
-        // time=0.0, prof=0.0, skill=0.0, user=1.0 → 0.10*1 = 0.1
-        assertEquals(0.1, scoreCalculator.computeFinalScore(0, 0, 0, 1));
+        // user=1.0, others=0.0 → 0.10*1 = 0.1
+        assertEquals(0.1, scoreCalculator.computeFinalScore(0, 0, 0, 1, 0));
+
+        // session=1.0, others=0.0 → 0.10*1 = 0.1
+        assertEquals(0.1, scoreCalculator.computeFinalScore(0, 0, 0, 0, 1));
     }
 
     @Test
     void computeFinalScore_roundsToTwoDecimals() {
-        // 0.5*0.3333 + 0.25*0.6667 + 0.15*0.5 + 0.10*0.8 = 0.16665 + 0.166675 + 0.075 + 0.08 = 0.488325 → 0.49
-        double score = scoreCalculator.computeFinalScore(0.3333, 0.6667, 0.5, 0.8);
+        // 0.45*0.3333 + 0.20*0.6667 + 0.15*0.5 + 0.10*0.8 + 0.10*0.5
+        double score = scoreCalculator.computeFinalScore(0.3333, 0.6667, 0.5, 0.8, 0.5);
         assertEquals(score, Math.round(score * 100.0) / 100.0);
     }
 }

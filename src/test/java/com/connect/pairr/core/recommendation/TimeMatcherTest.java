@@ -28,7 +28,7 @@ class TimeMatcherTest {
 
     private UserSkillAvailabilityData candidateSlot(LocalTime start, LocalTime end) {
         return new UserSkillAvailabilityData(
-                null, null, ProficiencyLevel.INTERMEDIATE, null, null, start, end);
+                null, null, ProficiencyLevel.INTERMEDIATE, null, null, 0L, start, end);
     }
 
     // --- Full overlap ---

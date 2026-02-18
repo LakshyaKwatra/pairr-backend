@@ -16,5 +16,6 @@ public record UserResponse(
         String displayName,
         Role role,
         BigDecimal overallRating,
+        Long completedSessionsCount,
         Instant createdAt
 ) {}

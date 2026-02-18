@@ -104,6 +104,14 @@ Test files live under `src/test/java/com/connect/pairr/` mirroring the main sour
 | GET | `/api/chat/conversations/{id}/messages` | Get message history (paginated, auto-marks as read) |
 | POST | `/api/chat/conversations/{id}/read` | Mark conversation as read |
 
+### Pairing Sessions (Collaboration Lifecycle)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/pairing/request` | Request a pairing session with another user |
+| PATCH | `/api/pairing/{id}/status?status=` | Accept, Complete, or Cancel a session |
+| GET | `/api/pairing/sessions` | List your pairing sessions (paginated) |
+
 ### WebSocket (STOMP over WebSocket)
 
 | Action | Destination | Description |
@@ -137,10 +145,11 @@ The recommendation engine uses rule-based weighted scoring (no ML):
 
 | Factor | Weight | Description |
 |---|---|---|
-| Availability overlap | 50% | Sweep-line algorithm computes time overlap between windows |
-| Proficiency similarity | 25% | Closer proficiency levels score higher |
+| Availability overlap | 45% | Sweep-line algorithm computes time overlap between windows |
+| Proficiency similarity | 20% | Closer proficiency levels score higher |
 | Skill rating | 15% | Peer-rated skill score similarity (from ratings system) |
 | Overall user rating | 10% | Aggregate rating similarity (from ratings system) |
+| Completed sessions | 10% | Verified collaborations (experience bonus) |
 
 **How a recommendation request flows:**
 
@@ -153,7 +162,7 @@ The recommendation engine uses rule-based weighted scoring (no ML):
    - **Proficiency score:** `1.0 - (|requester_level - candidate_level| / max_diff)` where levels are BEGINNER(0), AMATEUR(1), INTERMEDIATE(2), EXPERT(3)
    - **Skill rating score:** `1.0 - |normalize(candidate) - normalize(requester)|` where ratings are normalized to 0-1 scale (divided by 5). Returns 0 if either user has no ratings yet
    - **User rating score:** Same formula as skill rating, applied to overall user ratings
-   - **Final score:** `time*0.50 + proficiency*0.25 + skillRating*0.15 + userRating*0.10`
+   - **Final score:** `time*0.45 + proficiency*0.20 + skillRating*0.15 + userRating*0.10 + sessions*0.10`
 6. A min-heap (`PriorityQueue`) of size N efficiently selects the top-N candidates — O(n log k) where n = candidates, k = requested count
 7. Results are returned sorted by score descending
 
@@ -243,6 +252,8 @@ Key environment variables (with defaults for local dev):
 | `ADMIN_EMAIL` | `admin@pairr.com` | Default admin email |
 | `ADMIN_PASSWORD` | `admin123` | Default admin password |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | Allowed frontend origin(s) for CORS |
+| `GOOGLE_CLIENT_ID` | - | Google OAuth Client ID |
+| `GOOGLE_CLIENT_SECRET` | - | Google OAuth Client Secret |
 | `PORT` | `8080` | Server port (auto-set by Railway) |
 
 ## Deployment

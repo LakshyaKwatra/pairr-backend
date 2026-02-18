@@ -12,6 +12,7 @@ public record UserSkillAvailabilityData(
         ProficiencyLevel proficiency,
         BigDecimal rating,
         BigDecimal overallRating,
+        Long completedSessionsCount,
         LocalTime startTime,
         LocalTime endTime
 ) {}

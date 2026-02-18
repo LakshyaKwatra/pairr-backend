@@ -61,7 +61,8 @@ public class RecommendationEngine {
                     scoreCalculator.computeTimeScore(requesterAvailabilities, candidateData),
                     scoreCalculator.proficiencyScore(requesterUserSkill.getProficiency(), sample.proficiency()),
                     scoreCalculator.skillRatingScore(requesterUserSkill.getRating(), sample.rating()),
-                    scoreCalculator.userRatingScore(requesterUserSkill.getUser().getOverallRating(), sample.overallRating())
+                    scoreCalculator.userRatingScore(requesterUserSkill.getUser().getOverallRating(), sample.overallRating()),
+                    scoreCalculator.sessionCountScore(sample.completedSessionsCount())
             );
 
             Recommendation recommendation = Recommendation.builder()

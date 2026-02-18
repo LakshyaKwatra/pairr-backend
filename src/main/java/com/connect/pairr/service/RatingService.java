@@ -4,10 +4,8 @@ import com.connect.pairr.exception.*;
 import com.connect.pairr.mapper.RatingMapper;
 import com.connect.pairr.model.dto.AddRatingRequest;
 import com.connect.pairr.model.dto.RatingResponse;
-import com.connect.pairr.model.entity.Rating;
-import com.connect.pairr.model.entity.Skill;
-import com.connect.pairr.model.entity.User;
-import com.connect.pairr.model.entity.UserSkill;
+import com.connect.pairr.model.entity.*;
+import com.connect.pairr.model.enums.PairingStatus;
 import com.connect.pairr.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +22,7 @@ public class RatingService {
     private final UserRepository userRepository;
     private final SkillRepository skillRepository;
     private final UserSkillRepository userSkillRepository;
+    private final PairingSessionRepository pairingSessionRepository;
 
     @Transactional
     public RatingResponse submitRating(UUID fromUserId, AddRatingRequest request) {
@@ -32,27 +31,32 @@ public class RatingService {
             throw new SelfRatingException();
         }
 
-        User fromUser = userRepository.findById(fromUserId)
-                .orElseThrow(() -> new UserNotFoundException(fromUserId));
+        // 1. Guard: Verify a verified session exists (Source of Truth)
+        boolean hasValidSession = pairingSessionRepository.existsByParticipantsAndSkillAndStatusIn(
+                fromUserId, request.toUserId(), request.skillId(), List.of(PairingStatus.ACCEPTED, PairingStatus.COMPLETED));
 
+        if (!hasValidSession) {
+            throw new RuntimeException("Can only rate users during an active or completed verified pairing session for this skill");
+        }
+
+        // 2. Fetch necessary entities for the update
+        User fromUser = userRepository.getReferenceById(fromUserId);
         User toUser = userRepository.findById(request.toUserId())
                 .orElseThrow(() -> new UserNotFoundException(request.toUserId()));
-
-        Skill skill = skillRepository.findById(request.skillId())
-                .orElseThrow(() -> new SkillNotFoundException(request.skillId()));
-
-        // Verify both users have the skill
-        userSkillRepository.findByUserIdAndSkillId(fromUserId, request.skillId())
-                .orElseThrow(() -> new RequesterSkillMissingException(request.skillId()));
+        Skill skill = skillRepository.getReferenceById(request.skillId());
 
         UserSkill toUserSkill = userSkillRepository.findByUserIdAndSkillId(request.toUserId(), request.skillId())
                 .orElseThrow(() -> new SkillNotFoundException(request.skillId()));
 
-        if (ratingRepository.existsByFromUserIdAndToUserIdAndSkillId(fromUserId, request.toUserId(), request.skillId())) {
-            throw new DuplicateRatingException(request.toUserId(), request.skillId());
-        }
+        // 3. Upsert Logic: Check if a rating already exists for this (fromUser, toUser, skill)
+        Rating rating = ratingRepository.findByFromUserIdAndToUserIdAndSkillId(fromUserId, request.toUserId(), request.skillId())
+                .map(existing -> {
+                    existing.setRating(request.rating());
+                    existing.setFeedback(request.feedback());
+                    return existing;
+                })
+                .orElseGet(() -> RatingMapper.toEntity(request, fromUser, toUser, skill));
 
-        Rating rating = RatingMapper.toEntity(request, fromUser, toUser, skill);
         rating = ratingRepository.save(rating);
 
         // Recalculate per-skill rating for the rated user

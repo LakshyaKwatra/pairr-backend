@@ -13,6 +13,7 @@ public class UserMapper {
                 user.getDisplayName(),
                 user.getRole(),
                 user.getOverallRating(),
+                user.getCompletedSessionsCount(),
                 user.getCreatedAt()
         );
     }

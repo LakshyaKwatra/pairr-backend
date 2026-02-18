@@ -40,6 +40,10 @@ public class User {
     @Column(name = "overall_rating", precision = 2, scale = 1)
     private BigDecimal overallRating;
 
+    @Column(name = "completed_sessions_count", nullable = false)
+    @Builder.Default
+    private Long completedSessionsCount = 0L;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;

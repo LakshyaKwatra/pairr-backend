@@ -27,4 +27,16 @@ databaseChangeLog:
       file: db/changelog/changes/013-add-is-read-to-messages.yml
   - include:
       file: db/changelog/changes/014-enforce-column-lengths.yml
+  - include:
+      file: db/changelog/changes/015-create-pairing-sessions-table.yml
+  - include:
+      file: db/changelog/changes/016-add-completed-sessions-count-to-users.yml
+  - include:
+      file: db/changelog/changes/017-link-ratings-to-sessions.yml
+  - include:
+      file: db/changelog/changes/018-add-unique-pending-pairing-index.yml
+  - include:
+      file: db/changelog/changes/019-enforce-unique-skill-rating.yml
+  - include:
+      file: db/changelog/changes/020-remove-session-id-from-ratings.yml
   

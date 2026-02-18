@@ -31,6 +31,7 @@ class RatingServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private SkillRepository skillRepository;
     @Mock private UserSkillRepository userSkillRepository;
+    @Mock private PairingSessionRepository pairingSessionRepository;
 
     @InjectMocks
     private RatingService ratingService;
@@ -68,12 +69,10 @@ class RatingServiceTest {
 
     @Test
     void submitRating_happyPath() {
-        when(userRepository.findById(fromUserId)).thenReturn(Optional.of(fromUser));
+        when(pairingSessionRepository.existsByParticipantsAndSkillAndStatusIn(any(), any(), any(), any())).thenReturn(true);
         when(userRepository.findById(toUserId)).thenReturn(Optional.of(toUser));
-        when(skillRepository.findById(skillId)).thenReturn(Optional.of(skill));
-        when(userSkillRepository.findByUserIdAndSkillId(fromUserId, skillId)).thenReturn(Optional.of(fromUserSkill));
         when(userSkillRepository.findByUserIdAndSkillId(toUserId, skillId)).thenReturn(Optional.of(toUserSkill));
-        when(ratingRepository.existsByFromUserIdAndToUserIdAndSkillId(fromUserId, toUserId, skillId)).thenReturn(false);
+        when(ratingRepository.findByFromUserIdAndToUserIdAndSkillId(fromUserId, toUserId, skillId)).thenReturn(Optional.empty());
         when(ratingRepository.save(any(Rating.class))).thenAnswer(inv -> {
             Rating r = inv.getArgument(0);
             r.setId(UUID.randomUUID());
@@ -89,8 +88,6 @@ class RatingServiceTest {
         assertEquals(4, response.rating());
         verify(userSkillRepository).save(toUserSkill);
         verify(userRepository).save(toUser);
-        assertEquals(BigDecimal.valueOf(4), toUserSkill.getRating());
-        assertEquals(BigDecimal.valueOf(4), toUser.getOverallRating());
     }
 
     @Test
@@ -146,15 +143,27 @@ class RatingServiceTest {
     }
 
     @Test
-    void submitRating_duplicateRating_throws() {
-        when(userRepository.findById(fromUserId)).thenReturn(Optional.of(fromUser));
+    void submitRating_overwritesExisting() {
+        Rating existing = Rating.builder()
+                .id(UUID.randomUUID())
+                .fromUser(fromUser)
+                .toUser(toUser)
+                .skill(skill)
+                .rating(2)
+                .build();
+        when(pairingSessionRepository.existsByParticipantsAndSkillAndStatusIn(any(), any(), any(), any())).thenReturn(true);
         when(userRepository.findById(toUserId)).thenReturn(Optional.of(toUser));
-        when(skillRepository.findById(skillId)).thenReturn(Optional.of(skill));
-        when(userSkillRepository.findByUserIdAndSkillId(fromUserId, skillId)).thenReturn(Optional.of(fromUserSkill));
         when(userSkillRepository.findByUserIdAndSkillId(toUserId, skillId)).thenReturn(Optional.of(toUserSkill));
-        when(ratingRepository.existsByFromUserIdAndToUserIdAndSkillId(fromUserId, toUserId, skillId)).thenReturn(true);
-        assertThrows(DuplicateRatingException.class,
-                () -> ratingService.submitRating(fromUserId, request(4)));
+        when(ratingRepository.findByFromUserIdAndToUserIdAndSkillId(fromUserId, toUserId, skillId)).thenReturn(Optional.of(existing));
+        when(ratingRepository.save(any(Rating.class))).thenReturn(existing);
+        when(ratingRepository.averageRatingByToUserIdAndSkillId(toUserId, skillId)).thenReturn(BigDecimal.valueOf(5));
+        when(ratingRepository.averageRatingByToUserId(toUserId)).thenReturn(BigDecimal.valueOf(5));
+
+        RatingResponse response = ratingService.submitRating(fromUserId, request(5));
+
+        assertEquals(5, existing.getRating());
+        assertEquals(5, response.rating());
+        verify(ratingRepository).save(existing);
     }
 
     @Test

@@ -72,7 +72,7 @@ class RecommendationServiceTest {
         UUID candidateId = UUID.randomUUID();
         UserSkillAvailabilityData candidateData = new UserSkillAvailabilityData(
                 candidateId, "Candidate", ProficiencyLevel.EXPERT,
-                BigDecimal.valueOf(4.5), BigDecimal.valueOf(4.2),
+                BigDecimal.valueOf(4.5), BigDecimal.valueOf(4.2), 0L,
                 LocalTime.of(10, 0), LocalTime.of(15, 0));
         when(userSkillRepository.getRecommendationCandidates(skillId, DayType.WEEKDAY, userId))
                 .thenReturn(List.of(candidateData));

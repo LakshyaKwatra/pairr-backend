@@ -22,11 +22,14 @@ public class ScoreCalculator {
     private int maxOverlapHours;
 
     // Weights
-    private static final double TIME_WEIGHT = 0.5;
-    private static final double PROFICIENCY_WEIGHT = 0.25;
+    private static final double TIME_WEIGHT = 0.45; // reduced from 0.5
+    private static final double PROFICIENCY_WEIGHT = 0.20; // reduced from 0.25
     private static final double SKILL_RATING_WEIGHT = 0.15;
     private static final double USER_RATING_WEIGHT = 0.10;
+    private static final double SESSION_COUNT_WEIGHT = 0.10; // New factor
+
     private static final int SECONDS_PER_HOUR = 60 * 60;
+    private static final int SESSION_COUNT_CAP = 20; // Experience beyond 20 sessions has diminishing returns for the score
 
 
     // Compute proficiency similarity (1 = same, 0 = max difference)
@@ -34,6 +37,12 @@ public class ScoreCalculator {
         int diff = Math.abs(requester.getLevel() - candidate.getLevel());
         int maxDiff = ProficiencyLevel.values().length - 1;
         return 1.0 - ((double) diff / maxDiff);
+    }
+
+    // Compute session count score (experience)
+    public double sessionCountScore(Long completedSessions) {
+        if (completedSessions == null || completedSessions == 0) return 0;
+        return Math.min((double) completedSessions / SESSION_COUNT_CAP, 1.0);
     }
 
     // Compute skill rating similarity (1 = same, 0 = max difference)
@@ -61,11 +70,12 @@ public class ScoreCalculator {
 
 
     // Final score combining all factors
-    public double computeFinalScore(double timeScore, double proficiencyScore, double skillScore, double userRatingScore) {
+    public double computeFinalScore(double timeScore, double proficiencyScore, double skillScore, double userRatingScore, double sessionScore) {
         double raw = (timeScore * TIME_WEIGHT) +
                 (proficiencyScore * PROFICIENCY_WEIGHT) +
                 (skillScore * SKILL_RATING_WEIGHT) +
-                (userRatingScore * USER_RATING_WEIGHT);
+                (userRatingScore * USER_RATING_WEIGHT) +
+                (sessionScore * SESSION_COUNT_WEIGHT);
         return Math.round(raw * 100.0) / 100.0;
     }
 
