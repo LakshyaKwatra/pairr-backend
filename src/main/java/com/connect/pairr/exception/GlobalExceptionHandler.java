@@ -22,7 +22,8 @@ public class GlobalExceptionHandler {
             SelfRatingException.class,
             DuplicateRatingException.class,
             SelfMessageException.class,
-            ConversationNotFoundException.class
+            ConversationNotFoundException.class,
+            PairingSessionNotFoundException.class
     })
     public ResponseEntity<?> handleCustomExceptions(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)

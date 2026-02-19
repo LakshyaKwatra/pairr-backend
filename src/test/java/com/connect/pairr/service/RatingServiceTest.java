@@ -76,6 +76,9 @@ class RatingServiceTest {
         when(ratingRepository.save(any(Rating.class))).thenAnswer(inv -> {
             Rating r = inv.getArgument(0);
             r.setId(UUID.randomUUID());
+            r.setFromUser(fromUser); // Manually set fields that would be null in mapper-to-entity result
+            r.setToUser(toUser);
+            r.setSkill(skill);
             r.setCreatedAt(Instant.now());
             return r;
         });
@@ -99,14 +102,16 @@ class RatingServiceTest {
 
     @Test
     void submitRating_fromUserNotFound_throws() {
-        when(userRepository.findById(fromUserId)).thenReturn(Optional.empty());
+        // Now findById(toUserId) is what triggers UserNotFoundException
+        when(pairingSessionRepository.existsByParticipantsAndSkillAndStatusIn(any(), any(), any(), any())).thenReturn(true);
+        when(userRepository.findById(toUserId)).thenReturn(Optional.empty());
         assertThrows(UserNotFoundException.class,
                 () -> ratingService.submitRating(fromUserId, request(4)));
     }
 
     @Test
     void submitRating_toUserNotFound_throws() {
-        when(userRepository.findById(fromUserId)).thenReturn(Optional.of(fromUser));
+        when(pairingSessionRepository.existsByParticipantsAndSkillAndStatusIn(any(), any(), any(), any())).thenReturn(true);
         when(userRepository.findById(toUserId)).thenReturn(Optional.empty());
         assertThrows(UserNotFoundException.class,
                 () -> ratingService.submitRating(fromUserId, request(4)));
@@ -114,29 +119,28 @@ class RatingServiceTest {
 
     @Test
     void submitRating_skillNotFound_throws() {
-        when(userRepository.findById(fromUserId)).thenReturn(Optional.of(fromUser));
+        when(pairingSessionRepository.existsByParticipantsAndSkillAndStatusIn(any(), any(), any(), any())).thenReturn(true);
         when(userRepository.findById(toUserId)).thenReturn(Optional.of(toUser));
-        when(skillRepository.findById(skillId)).thenReturn(Optional.empty());
+        when(userSkillRepository.findByUserIdAndSkillId(toUserId, skillId)).thenReturn(Optional.empty());
         assertThrows(SkillNotFoundException.class,
                 () -> ratingService.submitRating(fromUserId, request(4)));
     }
 
     @Test
     void submitRating_fromUserMissingSkill_throws() {
-        when(userRepository.findById(fromUserId)).thenReturn(Optional.of(fromUser));
+        // This test is now redundant because session check covers it, 
+        // but if session check passes and toUserSkill is missing, it throws SkillNotFoundException
+        when(pairingSessionRepository.existsByParticipantsAndSkillAndStatusIn(any(), any(), any(), any())).thenReturn(true);
         when(userRepository.findById(toUserId)).thenReturn(Optional.of(toUser));
-        when(skillRepository.findById(skillId)).thenReturn(Optional.of(skill));
-        when(userSkillRepository.findByUserIdAndSkillId(fromUserId, skillId)).thenReturn(Optional.empty());
-        assertThrows(RequesterSkillMissingException.class,
+        when(userSkillRepository.findByUserIdAndSkillId(toUserId, skillId)).thenReturn(Optional.empty());
+        assertThrows(SkillNotFoundException.class,
                 () -> ratingService.submitRating(fromUserId, request(4)));
     }
 
     @Test
     void submitRating_toUserMissingSkill_throws() {
-        when(userRepository.findById(fromUserId)).thenReturn(Optional.of(fromUser));
+        when(pairingSessionRepository.existsByParticipantsAndSkillAndStatusIn(any(), any(), any(), any())).thenReturn(true);
         when(userRepository.findById(toUserId)).thenReturn(Optional.of(toUser));
-        when(skillRepository.findById(skillId)).thenReturn(Optional.of(skill));
-        when(userSkillRepository.findByUserIdAndSkillId(fromUserId, skillId)).thenReturn(Optional.of(fromUserSkill));
         when(userSkillRepository.findByUserIdAndSkillId(toUserId, skillId)).thenReturn(Optional.empty());
         assertThrows(SkillNotFoundException.class,
                 () -> ratingService.submitRating(fromUserId, request(4)));
@@ -164,6 +168,14 @@ class RatingServiceTest {
         assertEquals(5, existing.getRating());
         assertEquals(5, response.rating());
         verify(ratingRepository).save(existing);
+    }
+
+    @Test
+    void submitRating_noSession_throws() {
+        when(pairingSessionRepository.existsByParticipantsAndSkillAndStatusIn(any(), any(), any(), any())).thenReturn(false);
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> ratingService.submitRating(fromUserId, request(4)));
+        assertTrue(ex.getMessage().contains("verified pairing session"));
     }
 
     @Test
